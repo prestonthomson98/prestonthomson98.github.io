@@ -1,13 +1,30 @@
 ---
-title: "Final Project"
+title: "Covid-19 Across Europe"
 author: "Preston Thomson"
 date: "5/14/2020"
 output: html_document
 ---
+The entire world has been effected by the Covid-19 pandemic.  Many different countries have taken different approaches in fighting this pandemic and we wanted to find out which countries in Europe have been most effective.  In this tutorial, we will take you through all of the steps involved in the data science pipeline.  We will show you techniques for data curation, exploratory data analysis, hypothesis testing, and machine learning to provide analysis on the topic and use that to provide valuable insights on how best to move forward in managing this disease.  
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+
+The first step to data analysis is finding and managing data.  To track the effects of this and future projections I have used data from http://www.healthdata.org/  For simplicity we will look only at data from the top 10 economies in Europe: Germany, United Kingdom, France, Italy, Spain, Netherlands, Switzerland, Sweden, Poland, Belgium.  
 ```{r downlaod data}
+library(tidyverse)
+library(stringr)
+library(pracma)
+library("RSQLite") 
+library(dplyr)
+Hospitalizations <-read_csv("Hospitalization_all_locs.csv")
+SummaryStats <-read_csv("Summary_stats_all_locs.csv")
+
+Hospitalizations %>%
+  filter()
+
 ```
+
+
+
