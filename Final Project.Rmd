@@ -11,18 +11,50 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-The first step to data analysis is finding and managing data.  To track the effects of this and future projections I have used data from http://www.healthdata.org/  For simplicity we will look only at data from the top 10 economies in Europe: Germany, United Kingdom, France, Italy, Spain, Netherlands, Switzerland, Sweden, Poland, Belgium.  
+The first step to data analysis is finding and managing data.  To track the effects of this and future projections I have used data from http://www.healthdata.org/  For simplicity we will look only at data from the top 10 economies in Europe: Germany, United Kingdom, France, Italy, Spain, Netherlands, Switzerland, Sweden, Poland, and Belgium.  The data provides future projections as well, but we are not interested in them for our purposes, so we will filter out any entries that have been provided since the last time the data was updated, which was May 4 at the time the data was downloaded.  It will also be necessary to provide summary data for each country in the data set such as population, date locked down, etc.   
 ```{r downlaod data}
 library(tidyverse)
 library(stringr)
 library(pracma)
 library("RSQLite") 
 library(dplyr)
-Hospitalizations <-read_csv("Hospitalization_all_locs.csv")
-SummaryStats <-read_csv("Summary_stats_all_locs.csv")
+Hospitalizations <-read_csv("Hospitalization_all_locs.csv") %>%
+  filter(location_name %in% c("Germany", "United Kingdom", "France", "Italy", "Spain", "Netherlands", "Switzerland", "Sweden", "Poland","Belgium")) %>%
+  filter(date < as.Date("2020-05-05")) %>%
+  filter(Hospitalizations$allbed_mean > 0)
 
-Hospitalizations %>%
-  filter()
+popsize <- function(loc){
+  if (loc == "Germany"){
+    82576900
+  } else if (loc == "France"){
+    67187000
+  } else if (loc == "United Kingdom"){
+    65648100
+  } else if (loc == "Italy"){
+    60391000
+  } else if (loc == "Spain"){
+    46549045
+  } else if (loc == "Poland"){
+    38426000	
+  } else if (loc == "Netherlands"){
+    17261622
+  } else if (loc == "Sweden"){
+    10142686
+  } else if (loc == "Belgium"){
+    11399335
+  } else{
+    8648907
+  }
+}
+
+Hospitalizations$DailyDeathsPerHundredThousand <- Hospitalizations$deaths_mean/popsize(Hospitalizations$location_name) * 100000
+
+Hospitalizations %>% ggplot(aes(x=Hospitalizations$date,y=Hospitalizations$DailyDeathsPerHundredThousand,color = location_name)) + geom_point() + geom_line()
+  
+
+
+
+
 
 ```
 
