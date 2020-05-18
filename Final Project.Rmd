@@ -1,6 +1,7 @@
 ---
 title: "Covid-19 Across Europe"
-author: "Preston Thomson"
+author: "Preston Thomson, Sapna Bagalkotkar"
+
 date: "5/14/2020"
 output: html_document
 ---
@@ -11,7 +12,8 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-The first step to data analysis is finding and managing data.  To track the effects of this and future projections I have used data from http://www.healthdata.org/  For simplicity we will look only at data from the top 10 economies in Europe: Germany, United Kingdom, France, Italy, Spain, Netherlands, Switzerland, Sweden, Poland, and Belgium.  The data provides future projections as well, but we are not interested in them for our purposes, so we will filter out any entries that have been provided since the last time the data was updated, which was May 4 at the time the data was downloaded.  It will also be necessary to provide summary data for each country in the data set such as population, date locked down, etc.   
+The first step to data analysis is finding and managing data.  To track the effects of this and future projections I have used data from http://www.healthdata.org/  For simplicity we will look only at data from the top 10 economies in Europe: Germany, United Kingdom, France, Italy, Spain, Netherlands, Switzerland, Sweden, Poland, and Belgium.  The data provides future projections as well, but we are not interested in them for our purposes, so we will filter out any entries that have been provided since the last time the data was updated, which was May 4 at the time the data was downloaded.  It will also be necessary to provide summary data for each country in the data set such as population, date locked down, etc. 
+
 ```{r downlaod data}
 library(tidyverse)
 library(stringr)
@@ -21,8 +23,13 @@ library(dplyr)
 Hospitalizations <-read_csv("Hospitalization_all_locs.csv") %>%
   filter(location_name %in% c("Germany", "United Kingdom", "France", "Italy", "Spain", "Netherlands", "Switzerland", "Sweden", "Poland","Belgium")) %>%
   filter(date < as.Date("2020-05-05")) %>%
-  filter(Hospitalizations$allbed_mean > 0)
+  filter(allbed_mean > 0)
 
+Hospitalizations
+```
+Next we, wrote a function to include population size of each of the European countries in the dataset. We use these numbers to calculate the percentage of hospitalizations per country. We then use ggplot in order to visualize the differences between each country, where each colored line reperesents a different country.
+
+```{r}
 popsize <- function(loc){
   if (loc == "Germany"){
     82576900
@@ -50,13 +57,59 @@ popsize <- function(loc){
 Hospitalizations$DailyDeathsPerHundredThousand <- Hospitalizations$deaths_mean/popsize(Hospitalizations$location_name) * 100000
 
 Hospitalizations %>% ggplot(aes(x=Hospitalizations$date,y=Hospitalizations$DailyDeathsPerHundredThousand,color = location_name)) + geom_point() + geom_line()
-  
+```
+We can observe a difference in trends across the different countries, as countries such as Italy and Spain experienced a peak right before April 1, and then started to decrease steadily and sharply into the more recent weeks, while countires such as the United Kingdom have a lot more irregular shapes and show evidence of peaking almost randomly with a steady decline nowhere in sight.
+
+We would like to look into other metrics as mentioned before to see if we can identify factors that might have influenced the shapes of the curves in the graph above for each different country. To do that, we must parse and clean the summary data file and choose specific columns of interest, as the set of data is very large.
+```{r download summary data}
+Summary <- read_csv("Summary_stats_all_locs.csv") %>%
+  filter(location_name %in% c("Germany", "United Kingdom", "France", "Italy", "Spain", "Netherlands", "Switzerland", "Sweden", "Poland","Belgium"))
+
+Summary
+```
+We can observe columns such as peak_bed_day_mean, peak_icu_bed_day_mean, peak_vent_day_mean, all_bed_capacity, all_bed_usage, and stay_at_home_start_date that may be interesting in our goal to pick out factors that could contribute to us predicting the level of hospitalization certain countries are currently at.
+
+Our goal will be to create a regression model where we will use the summary dataframe columns as independent variables in order to see if we can predict the number of deaths per hundred thousand on a particular date, May 4, which is the most recent date in our Hospitalizations dataframe. We can then compare the regression results with the actual numbers reported in the Hospitalization data frame.
+
+The first step will be to filter the columns we want from the summary data frame and combine them with specific columns of the Hospitalization data based on country name. We will do an inner join of the two dataframes.
+
+```{r combining dataframes}
+#we would like to retain the hospitalization data for the dates 5/4 as our independent variable, and 3/29 as our dependent variable.
 
 
 
+df = inner_join(Hospitalizations,Summary, by='location_name')%>%
+  filter(date == as.Date("2020-05-04") | date == as.Date("2020-03-29")) 
 
+keeps <- c("location_name", "peak_bed_day_mean", "peak_icu_bed_day_mean", "peak_vent_day_mean", "all_bed_capacity", "all_bed_usage", "stay_home_start_date", "DailyDeathsPerHundredThousand", "date")
+
+# keeping relevant columns and adding a conditional column for if the country instituted a stay at home order
+
+df = df[keeps]
+df$stay_home_binary <- ifelse(is.na(df$stay_home_start_date), 0, 1)
+
+# we then need to make the each date a column with each row's value for the column being the specific deaths per 100,000 per country. Tidying up the data so it is in the correct format for regression.
+
+df$may4 <- ifelse(df$date == as.Date("2020-05-04"), df$DailyDeathsPerHundredThousand, NA)
+df$march29 <- ifelse(df$date == as.Date("2020-03-29"), df$DailyDeathsPerHundredThousand, NA)
+
+dfmay4 = df[!is.na(df$may4), ]
+dfmay4 = dfmay4[c("location_name", "may4")]
+
+dfmarch29 = df[!is.na(df$march29), ]
+dfmarch29 = dfmarch29[c("location_name", "march29")]
+
+keeps <- c("location_name", "peak_bed_day_mean", "peak_icu_bed_day_mean", "peak_vent_day_mean", "all_bed_capacity", "all_bed_usage", "stay_home_start_date")
+df = df[keeps]
+df = df[!duplicated(df$location_name), ]
+
+
+temp <- inner_join(dfmarch29, dfmay4, by="location_name")
+df <- inner_join(df, temp, by='location_name')
+
+df
+
+#After all that work cleaning up the data now we have our final dataframe to work with for the linear regression.
 
 ```
-
-
-
+The next step is to create our linear model with the may 4th death per 100k as the independent variable we are trying to predict, and the dependent variables being all the other columns in this dataframe that could act as indicators for how a particular country is dealing with the virus.
