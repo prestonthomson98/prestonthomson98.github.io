@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 The first step to data analysis is finding and managing data.  To track the effects of this and future projections I have used data from http://www.healthdata.org/  For simplicity we will look only at data from the top 10 economies in Europe: Germany, United Kingdom, France, Italy, Spain, Netherlands, Switzerland, Sweden, Poland, and Belgium.  The data provides future projections as well, but we are not interested in them for our purposes, so we will filter out any entries that have been provided since the last time the data was updated, which was May 4 at the time the data was downloaded.  It will also be necessary to provide summary data for each country in the data set such as population, date locked down, etc. 
 
-```{r downlaod data}
+```{r download data}
 library(tidyverse)
 library(stringr)
 library(pracma)
@@ -81,12 +81,17 @@ The first step will be to filter the columns we want from the summary data frame
 df = inner_join(Hospitalizations,Summary, by='location_name')%>%
   filter(date == as.Date("2020-05-04") | date == as.Date("2020-03-29")) 
 
-keeps <- c("location_name", "peak_bed_day_mean", "peak_icu_bed_day_mean", "peak_vent_day_mean", "all_bed_capacity", "all_bed_usage", "stay_home_start_date", "DailyDeathsPerHundredThousand", "date")
+keeps <- c("location_name", "peak_bed_day_mean", "peak_icu_bed_day_mean", "peak_vent_day_mean", "all_bed_capacity", "all_bed_usage", "stay_home_start_date", "any_gathering_restrict_start_date", "all_non-ess_business_start_date","DailyDeathsPerHundredThousand", "date")
 
 # keeping relevant columns and adding a conditional column for if the country instituted a stay at home order
 
 df = df[keeps]
 df$stay_home_binary <- ifelse(is.na(df$stay_home_start_date), 0, 1)
+df$restrict_gathering_binary <- ifelse(is.na(df$any_gathering_restrict_start_date), 0, 1)
+df$non_ess_restriction_binary <- ifelse(is.na(df$'all_non-ess_business_start_date'), 0, 1)
+
+
+df$bed_usage_percentage <- df$all_bed_usage / df$all_bed_capacity
 
 # we then need to make the each date a column with each row's value for the column being the specific deaths per 100,000 per country. Tidying up the data so it is in the correct format for regression.
 
@@ -99,7 +104,8 @@ dfmay4 = dfmay4[c("location_name", "may4")]
 dfmarch29 = df[!is.na(df$march29), ]
 dfmarch29 = dfmarch29[c("location_name", "march29")]
 
-keeps <- c("location_name", "peak_bed_day_mean", "peak_icu_bed_day_mean", "peak_vent_day_mean", "all_bed_capacity", "all_bed_usage", "stay_home_start_date")
+keeps <- c("location_name", "peak_bed_day_mean", "peak_icu_bed_day_mean", "peak_vent_day_mean", "bed_usage_percentage", "stay_home_binary", "non_ess_restriction_binary", "restrict_gathering_binary")
+
 df = df[keeps]
 df = df[!duplicated(df$location_name), ]
 
@@ -113,3 +119,18 @@ df
 
 ```
 The next step is to create our linear model with the may 4th death per 100k as the independent variable we are trying to predict, and the dependent variables being all the other columns in this dataframe that could act as indicators for how a particular country is dealing with the virus.
+```{r}
+library(broom)
+
+auto_fit <- lm(may4~bed_usage_percentage+stay_home_binary+restrict_gathering_binary+non_ess_restriction_binary+march29, data=df)
+
+auto_fit
+```
+Next, we will take a look at some of the stats from the model we just created.
+```{r}
+
+auto_fit_stats <- auto_fit %>%
+  tidy()
+auto_fit_stats %>% knitr::kable()
+
+```
