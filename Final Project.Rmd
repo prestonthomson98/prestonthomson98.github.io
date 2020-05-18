@@ -12,7 +12,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-The first step to data analysis is finding and managing data.  To track the effects of this and future projections I have used data from http://www.healthdata.org/  For simplicity we will look only at data from the top 10 economies in Europe: Germany, United Kingdom, France, Italy, Spain, Netherlands, Switzerland, Sweden, Poland, and Belgium.  The data provides future projections as well, but we are not interested in them for our purposes, so we will filter out any entries that have been provided since the last time the data was updated, which was May 4 at the time the data was downloaded.  It will also be necessary to provide summary data for each country in the data set such as population, date locked down, etc. 
+The first step to data analysis is finding and managing data.  To track the effects of this and future projections I have used data from http://www.healthdata.org/  For simplicity we will look only at data from the top 10 economies in Europe: Germany, United Kingdom, France, Italy, Spain, Netherlands, Switzerland, Sweden, Poland, and Belgium (Mullan).  The data provides future projections as well, but we are not interested in them for our purposes, so we will filter out any entries that have been provided since the last time the data was updated, which was May 4 at the time the data was downloaded.  It will also be necessary to provide summary data for each country in the data set such as population, date locked down, etc. 
 
 ```{r download data}
 library(tidyverse)
@@ -25,9 +25,10 @@ Hospitalizations <-read_csv("Hospitalization_all_locs.csv") %>%
   filter(date < as.Date("2020-05-05")) %>%
   filter(allbed_mean > 0)
 
-Hospitalizations
+head(Hospitalizations)
 ```
-Next we, wrote a function to include population size of each of the European countries in the dataset. We use these numbers to calculate the percentage of hospitalizations per country. We then use ggplot in order to visualize the differences between each country, where each colored line reperesents a different country.
+
+Next we, wrote a function to include population size of each of the European countries in the dataset. We use these numbers to calculate the percentage of hospitalizations per country. We then use ggplot in order to visualize the differences between each country, where each colored line reperesents a different country.  These population figures were provided by Eurostat at https://ec.europa.eu/eurostat/tgm/refreshTableAction.do?tab=table&plugin=1&pcode=tps00001&language=en.
 
 ```{r}
 popsize <- function(loc){
@@ -66,7 +67,20 @@ Summary <- read_csv("Summary_stats_all_locs.csv") %>%
   filter(location_name %in% c("Germany", "United Kingdom", "France", "Italy", "Spain", "Netherlands", "Switzerland", "Sweden", "Poland","Belgium"))
 
 Summary
+
 ```
+We may first view what countries have been most effective in mitigating deaths by running a linear model across all countries in our data set.  Because we are measuring Death Rates, we can reasonably say that countries that are associated with lover coefficients have been more effective in mitigating deaths up till this point.  Using the tidy() and kable() funtions we can view summary statistics clearly which will help us best draw conslusions.  The null hypothesis is that all countries have been equally effective in itigating deaths and the p-value cutoff we will use is .05.  
+
+
+```{R}
+location_lm <- lm(DailyDeathsPerHundredThousand~location_name, data=Hospitalizations)
+location_lm %>% tidy() %>% knitr::kable()
+```
+Looking at the results of our regression model, we can reasonably conclude that some European countries have been much more effective than others in mitigating Covid-19 deaths.  For all countries except Germany and Netherlands we can reject the null hypothesis and say that their efforts or lack their of have made a statistically significant difference in death rates amongst their whole population.  We can conclude this because they are the only two countries with associated p-values greater than .05.  Poland have been most effective in mitigating deaths, showing one fewer death on average per 100,000 people than the baseline of Belgium.  However, the United Kingdom has been least effective of the ten countries showing about three more deaths per 100,000 people on average.  
+
+Now that we have shown which countries have been most effective in mitigating deaths, we can also show which stretegies have been most effective.  
+  
+  
 We can observe columns such as peak_bed_day_mean, peak_icu_bed_day_mean, peak_vent_day_mean, all_bed_capacity, all_bed_usage, and stay_at_home_start_date that may be interesting in our goal to pick out factors that could contribute to us predicting the level of hospitalization certain countries are currently at.
 
 Our goal will be to create a regression model where we will use the summary dataframe columns as independent variables in order to see if we can predict the number of deaths per hundred thousand on a particular date, May 4, which is the most recent date in our Hospitalizations dataframe. We can then compare the regression results with the actual numbers reported in the Hospitalization data frame.
@@ -118,32 +132,53 @@ df
 #After all that work cleaning up the data now we have our final dataframe to work with for the linear regression.
 
 ```
-The next step is to create our linear model with the may 4th death per 100k as the independent variable we are trying to predict, and the dependent variables being all the other columns in this dataframe that could act as indicators for how a particular country is dealing with the virus.
+The next step is to create our linear model with the may 4th death per 100k as the independent variable we are trying to predict, and the dependent variables being all the other columns in this dataframe that could act as indicators for how a particular country is dealing with the virus.  This should ideally let us know which strategies for fighting the virus have been most effective.  
+  
+  
+For our model we are establishing that the null hypothesis is that none of the factors included in this data frame are significantly effective in lowering the number of deaths per 100,000 people.  Our p-value will be alpha = .05 for this experiment.  
 ```{r}
 library(broom)
-
 auto_fit <- lm(may4~bed_usage_percentage+stay_home_binary+restrict_gathering_binary+non_ess_restriction_binary+march29, data=df)
-
 auto_fit
 ```
-Next, we will take a look at some of the stats from the model we just created.
+
+We can use the tidy() and knitr::kable() R functions to view the data in a clean and coherent way.  We will take a look at some of the summary statistics from the model we just created to determine which disease fighting stretegies have been most effective.  
 
 
 ```{r}
-
 auto_fit_stats <- auto_fit %>%
   tidy()
 auto_fit_stats %>% knitr::kable()
-
 ```
+
+Our Null Hypothesis for this experiment is that the factors tested will not affect death rate on May 04, 2020.  None of the factors tested showed a p-value greater than .05.  With a p-value of this size, we cannot reject the null hypothesis for any of the 5 factors tested.  The regression model shows that bed_usage, stay at home restrictions, gethering restorctions, non-essential business restrictions, and the death rate on March 29 are not statistically significant for predicting death rates on May 4.  
 
 Now let's visualize the residuals of our linear model.
 ``` {r}
-auto_fit %>% ggplot(aes(x=factor(df$location_name), y=.resid)) + geom_boxplot() + labs(title="Residuals vs Country", x="Country", y="residual")
+auto_fit %>% ggplot(aes(x=factor(df$location_name), y=.resid)) + geom_boxplot() + labs(title="Residuals vs Country", x="Country", y="Residual")
 
+
+auto_fit %>%
+  augment() %>%
+  ggplot(aes(x=.fitted,y=.resid)) + geom_point() + labs(title="Fitted vs. R^2",
+         x = "fitted",
+         y = "R^2") 
 ```
-As you can see, the residuals for each country are all far from 0, except for Italy. Overall, this would indicate that our model is not very accurate in terms of using bed_usage, restrictions, and death rate on March 29, to predict death rates on May 4. 
+As you can see, the residuals for each country are all far from 0, except for Italy. Overall, this would indicate that our model is not very accurate in terms of using bed_usage, restrictions, and death rate on March 29, to predict death rates on May 4.   
+The Fitted vs. R^2 dotplot does not seem to violate iid assumptions as the residual values appear to be independent from fitted values.   
 
-Our Null Hypothesis for this experiment is that the factors tested will not affect death rate on May 04, 2020.  None of the factors tested showed a p-value greater than .05, so we cannot reject the null hypothesis.  The regression model shows that bed_usage, restrictions, and death rate on March 29 are not statistically significant for predicting death rates on May 4.  
+  
+  
+Through our models we can draw some conclusions, but some others are yet to be seen.  We can say with 95% confidence that different countries have been differently effective in mitigating deaths.  However, we cannot draw conclusions about what methods have actually been most effective.  Through our second model we were unable to conclude that the decision to enforce certain restriction such as stay-at-home orders and non-essential business closures were statistically significant factors in mitigating deaths as of May 04.  This implies a few different possibilities.  The first of which is that not enough data has been collected in order to draw legitimate conclusion on the matter.  More data will be needed to draw conclusions about the efficacy of governemnt restrictions on movement.  Furthermore, the statistically significant differences between countries may based on factors that have either not been tested or are not quatifiable.  These may include culture, genetics, etc.   
+
+  
+    
+Works Cited: 
+  
+  “Population on 1 January.” Eurostat - Tables, Graphs and Maps Interface (TGM) Table,     ec.europa.eu/eurostat/tgm/refreshTableAction.do?tab=table&amp;plugin=1&amp;pcode=tps00001&amp;language=en.  
+  
+  “IHME: COVID-19 Projections.” Institute for Health Metrics and Evaluation, covid19.healthdata.org/united-states-of-america.  
+    
+  Mullan, Laura. “Top 10 Economies in Europe.” Europe, 5 Oct. 2018, europe.businesschief.com/leadership/2285/Top-10-economies-in-Europe.
 
 
