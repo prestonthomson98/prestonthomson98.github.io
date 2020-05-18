@@ -136,6 +136,12 @@ auto_fit_stats <- auto_fit %>%
 auto_fit_stats %>% knitr::kable()
 
 ```
-Our Null Hypothesis for this experiment is that the factors tested will not effect death rate on May 04, 2020.  None of the factors tested showed a p-value greater than .05, so we cannot reject the null hypothesis.  The regression model shows that bed_usage, restrictions, and death rate on March 29 are not statistically significant for predicting death rates on May 4.  
+
+Now let's visualize the residuals of our linear model.
+``` {r}
+auto_fit %>% ggplot(aes(x=factor(df$location_name), y=.resid)) + geom_boxplot() + labs(title="Residuals vs Country", x="Country", y="residual")
+```
+
+Our Null Hypothesis for this experiment is that the factors tested will not affect death rate on May 04, 2020.  None of the factors tested showed a p-value greater than .05, so we cannot reject the null hypothesis.  The regression model shows that bed_usage, restrictions, and death rate on March 29 are not statistically significant for predicting death rates on May 4.  
 
 
