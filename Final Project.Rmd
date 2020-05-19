@@ -78,6 +78,8 @@ library(tidyverse)
 location_lm <- lm(DailyDeathsPerHundredThousand~location_name, data=Hospitalizations)
 location_lm %>% tidy() %>% knitr::kable()
 ```
+  
+    
 Looking at the results of our regression model, we can reasonably conclude that some European countries have been much more effective than others in mitigating Covid-19 deaths.  For all countries except Germany and Netherlands we can reject the null hypothesis and say that their efforts or lack their of have made a statistically significant difference in death rates amongst their whole population.  We can conclude this because they are the only two countries with associated p-values greater than .05.  Poland have been most effective in mitigating deaths, showing one fewer death on average per 100,000 people than the baseline of Belgium.  However, the United Kingdom has been least effective of the ten countries showing about three more deaths per 100,000 people on average.  
 
 Now that we have shown which countries have been most effective in mitigating deaths, we can also show which stretegies have been most effective.  
