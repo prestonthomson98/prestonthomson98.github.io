@@ -5,7 +5,7 @@ author: "Preston Thomson, Sapna Bagalkotkar, Tran Nguyen"
 date: "5/14/2020"
 output: html_document
 ---
-The entire world has been effected by the Covid-19 pandemic.  Many different countries have taken different approaches in fighting this pandemic and we wanted to find out which countries in Europe have been most effective.  In this tutorial, we will take you through all of the steps involved in the data science pipeline.  We will show you techniques for data curation, exploratory data analysis, hypothesis testing, and machine learning to provide analysis on the topic and use that to provide valuable insights on how best to move forward in managing this disease.  
+The entire world has been affected by the Covid-19 pandemic. While some countries have been devastated by the quick spread of Covid-19, some countries have been surprisingly effective in controlling the oubreak. The varying approaches in handling the pandemic is our topic of interest for this data analysis. Many different countries have taken different approaches in fighting this pandemic and we wanted to find out which countries in Europe have been most effective. Various methods like strict contract tracing, stay at home orders, non-essential business closures, etc. have been implemented in varying countries. In this tutorial, we will take you through all of the steps involved in the data science pipeline.  We will show you techniques for data curation, exploratory data analysis, hypothesis testing, and machine learning to provide analysis on the topic and use that to provide valuable insights on how best to move forward in managing this disease. As university students, we are eager to get things back to normal so that hopefully we can resume school in the fall. This project is our way of contributing to help fight this pandemic together! 
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -72,7 +72,9 @@ Summary
 We may first view what countries have been most effective in mitigating deaths by running a linear model across all countries in our data set.  Because we are measuring Death Rates, we can reasonably say that countries that are associated with lover coefficients have been more effective in mitigating deaths up till this point.  Using the tidy() and kable() funtions we can view summary statistics clearly which will help us best draw conslusions.  The null hypothesis is that all countries have been equally effective in itigating deaths and the p-value cutoff we will use is .05.  
 
 
-```{R}
+```{r}
+library(broom)
+library(tidyverse)
 location_lm <- lm(DailyDeathsPerHundredThousand~location_name, data=Hospitalizations)
 location_lm %>% tidy() %>% knitr::kable()
 ```
@@ -153,10 +155,9 @@ auto_fit_stats %>% knitr::kable()
 
 Our Null Hypothesis for this experiment is that the factors tested will not affect death rate on May 04, 2020.  None of the factors tested showed a p-value greater than .05.  With a p-value of this size, we cannot reject the null hypothesis for any of the 5 factors tested.  The regression model shows that bed_usage, stay at home restrictions, gethering restorctions, non-essential business restrictions, and the death rate on March 29 are not statistically significant for predicting death rates on May 4.  
 
-Now let's visualize the residuals of our linear model.
+Now let's visualize the residuals of our linear model based on each country, and also the residuals vs. the fitted values.
 ``` {r}
 auto_fit %>% ggplot(aes(x=factor(df$location_name), y=.resid)) + geom_boxplot() + labs(title="Residuals vs Country", x="Country", y="Residual")
-
 
 auto_fit %>%
   augment() %>%
@@ -164,12 +165,16 @@ auto_fit %>%
          x = "fitted",
          y = "R^2") 
 ```
-As you can see, the residuals for each country are all far from 0, except for Italy. Overall, this would indicate that our model is not very accurate in terms of using bed_usage, restrictions, and death rate on March 29, to predict death rates on May 4.   
-The Fitted vs. R^2 dotplot does not seem to violate iid assumptions as the residual values appear to be independent from fitted values.   
+
+As you can see from the first plot, the residuals for each country are all far from 0. This is with the exception of Italy, which has a residual much closer to 0 than the other countries. However, since Italy is the only country which follows the model, overall this would indicate that our model is not very accurate in terms of using bed_usage, restrictions, and death rate on March 29, to predict death rates on May 4. This is significant to our analysis of the linear model. 
+
+In addition to this plot, the second plot shows the residuals against the fitted values. We can see that the Fitted vs. R^2 dotplot does not seem to violate iid assumptions as the residual values appear to be independent from fitted values.   
 
   
   
-Through our models we can draw some conclusions, but some others are yet to be seen.  We can say with 95% confidence that different countries have been differently effective in mitigating deaths.  However, we cannot draw conclusions about what methods have actually been most effective.  Through our second model we were unable to conclude that the decision to enforce certain restriction such as stay-at-home orders and non-essential business closures were statistically significant factors in mitigating deaths as of May 04.  This implies a few different possibilities.  The first of which is that not enough data has been collected in order to draw legitimate conclusion on the matter.  More data will be needed to draw conclusions about the efficacy of governemnt restrictions on movement.  Furthermore, the statistically significant differences between countries may based on factors that have either not been tested or are not quatifiable.  These may include culture, genetics, etc.   
+Through our models we can draw some conclusions, but some others are yet to be seen.  We can say with 95% confidence that different countries have been varyingly effective in mitigating deaths.  However, we cannot draw conclusions about what methods have actually been most effective.  Through our second model we were unable to conclude that the decision to enforce certain restriction such as stay-at-home orders and non-essential business closures were statistically significant factors in mitigating deaths as of May 04.  This implies a few different possibilities.  The first of which is that not enough data has been collected in order to draw legitimate conclusion on the matter. As our model has only considered the data for ten countries, we cannot conclude this with certainty. More data will be needed to draw conclusions about the efficacy of governemnt restrictions on movement.  Furthermore, the statistically significant differences between countries may based on factors that have either not been tested or are not quatifiable.  These may include culture, genetics, lifestyle, etc. Another interesting factor to consider is that while countries may be enacting stay at home or non-essential business closure orders, some countries may be less strict than others with actually enforcing it. 
+
+Given more time and resources, it would be interesting to further pursue this data analysis by looking at more countries. Another interesting analysis would be to compare countries within continents (based on the assumption that countries of the same continent have somehwat more similar culture, genetics, and lifestyle), and analyze data from this perspective. 
 
   
     
